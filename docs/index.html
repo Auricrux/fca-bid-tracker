@@ -24,10 +24,33 @@
 <script>
 
 // ✅ Get logged in user
-async function getUser() {
-  let res = await fetch("/.auth/me");
-  let data = await res.json();
-  return data?.clientPrincipal?.userDetails || "unknown";
+async function loadBids() {
+  try {
+    let res = await fetch("/api/bids");
+
+    let data = await res.text();   // read raw first
+    let bids = JSON.parse(data);   // convert safely
+
+    let container = document.getElementById("bids");
+    container.innerHTML = "";
+
+    if (!Array.isArray(bids)) {
+      container.innerHTML = "<p>No bids found or data error.</p>";
+      return;
+    }
+
+    bids.forEach(b => {
+      container.innerHTML += `
+        <div style="margin-bottom:10px;">
+          <b>${b.project}</b> — ${b.client} — $${b.amount} — ${b.status}
+        </div>
+      `;
+    });
+
+  } catch (err) {
+    document.getElementById("bids").innerText = "Error loading bids";
+    console.error(err);
+  }
 }
 
 // ✅ Submit new bid
