@@ -1,0 +1,6 @@
+{
+  "name": "fca-bid-api",
+  "version": "1.0.0",
+  "main": "bids/index.js",
+  "dependencies": {}
+}
