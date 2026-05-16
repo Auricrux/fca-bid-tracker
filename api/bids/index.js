@@ -1,49 +1,69 @@
 const https = require("https");
 
-module.exports = async function (context, req) {
-  try {
-    const base = process.env.BID_API_BASE;
-    const key = process.env.BID_API_KEY;
-
-    const url = `${base}?code=${key}`;
+function callApi(url, method, body) {
+  return new Promise((resolve, reject) => {
+    const parsedUrl = new URL(url);
 
     const options = {
-      method: req.method,
+      hostname: parsedUrl.hostname,
+      path: parsedUrl.pathname + parsedUrl.search,
+      method: method,
       headers: {
         "Content-Type": "application/json"
       }
     };
 
-    const request = https.request(url, options, (response) => {
+    const req = https.request(options, res => {
       let data = "";
 
-      response.on("data", chunk => data += chunk);
+      res.on("data", chunk => data += chunk);
 
-      response.on("end", () => {
-        context.res = {
-          status: response.statusCode,
+      res.on("end", () => {
+        resolve({
+          status: res.statusCode,
           body: data
-        };
+        });
       });
     });
 
-    request.on("error", err => {
-      context.res = {
-        status: 500,
-        body: err.toString()
-      };
-    });
+    req.on("error", reject);
 
-    if (req.body) {
-      request.write(JSON.stringify(req.body));
+    if (body) {
+      req.write(JSON.stringify(body));
     }
 
-    request.end();
+    req.end();
+  });
+}
+
+module.exports = async function (context, req) {
+
+  const base = process.env.BID_API_BASE;
+  const key = process.env.BID_API_KEY;
+
+  const url = `${base}?code=${encodeURIComponent(key)}`;
+
+  try {
+    const result = await callApi(url, req.method, req.body);
+
+    let parsed;
+
+    try {
+      parsed = JSON.parse(result.body);
+    } catch {
+      parsed = [];
+    }
+
+    context.res = {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: parsed
+    };
 
   } catch (err) {
     context.res = {
       status: 500,
-      body: err.toString()
+      body: { error: err.toString() }
     };
   }
 };
